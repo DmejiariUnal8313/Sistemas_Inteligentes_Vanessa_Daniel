@@ -1,0 +1,1337 @@
+{
+  "name": "logistic_automatization",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        208
+      ],
+      "id": "2824f7d2-e5a5-41ad-bce3-e7575063008d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uIm0ySnyRDyCeAA1",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.message_id }}{{ $json.message.from.first_name }}{{ $json.message.chat.id }}{{ $json.message.date }}{{ $json.message.text }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        208
+      ],
+      "id": "3d707b6e-abba-48dc-a84b-33346b8511d6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"intencion\": {\n      \"type\": \"string\",\n      \"enum\": [\"crear_pedido\", \"consultar_estado\", \"saludo\", \"otro\"]\n    },\n    \"order_id\": {\n      \"type\": \"string\"\n    },\n    \"producto_id\": {\n      \"type\": \"string\"\n    },\n    \"cantidad\": {\n      \"type\": \"number\"\n    }\n  },\n  \"required\": [\n    \"intencion\",\n    \"order_id\",\n    \"producto_id\",\n    \"cantidad\"\n  ]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        384,
+        208
+      ],
+      "id": "7b35b14d-d6e8-4a6c-9afa-d7de95adf179",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        336
+      ],
+      "id": "087ff053-77a5-4652-9ba7-25930b926ef6",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uIm0ySnyRDyCeAA1",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d57b9563-3cb4-423a-b7c0-37eab0806fc6",
+      "name": "Entrada Mensaje",
+      "webhookId": "50ee0c0a-fca9-42f8-9e04-1e7e22914bc7",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}{{ $json.message.chat.first_name }}{{ $json.message.message_id }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres un asistente de logística que recibe mensajes por Telegram.\nDebes responder únicamente con un JSON válido, sin texto adicional.\n\nEl campo \"intencion\" solo puede ser:\n- crear_pedido\n- consultar_estado\n- saludo\n- otro\n\nReglas:\n- Si el usuario quiere comprar o pedir un producto, usa \"crear_pedido\".\n- Si el usuario pregunta por el estado de un pedido, usa \"consultar_estado\".\n- Si solo saluda, usa \"saludo\".\n- Si no aplica ninguna de las anteriores, usa \"otro\".\n- Si falta información, deja el campo vacío.\n- \"cantidad\" debe ser numérica.\n- No agregues markdown.\n- No agregues explicación.\n- Devuelve solo JSON.\n\nel order_id es order_id: `${$json.message.from.first_name}\n\nel producto_id solo es PROD-xxx"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ebeace62-6583-478c-a672-a7fa5abf2df4",
+      "name": "Agente Logístico",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.item.json.output || {};\n\nreturn {\n  json: {\n    ...$input.item.json,\n    intencion: output.intencion || \"\",\n    order_id: output.order_id || \"\",\n    producto_id: output.producto_id || \"\",\n    cantidad: output.cantidad || 0\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "a1a7211b-b27a-4ac0-9dcf-71486286078a",
+      "name": "Variables utiles a JSON"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "=crear_pedido",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "75922778-26a0-47b3-bafa-92a5dd513ade"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "crear_pedido"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "04fafbbe-13c4-4576-b6cd-3c61b087a01f",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "consultar_estado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "consultar_estado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b837fd04-5962-4a2d-933c-3df563f9ba9c",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "saludo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "saludo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3911f30f-c8db-435b-b99e-16b612b104cb",
+                    "leftValue": "={{ $json.output.intencion }}",
+                    "rightValue": "otro",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "otro"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        0
+      ],
+      "id": "ae1b164c-334a-4ee9-b877-d6174a8f4bde",
+      "name": "Decisión basada en la intención"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e1fcb6b7-082a-4f24-8e04-10f31d1c3375",
+              "leftValue": "={{ $json.stock }}",
+              "rightValue": "={{ $json.cantidad }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        -192
+      ],
+      "id": "d55fdee6-96e9-4570-8466-610f763942b9",
+      "name": "Validar Stock"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Pedidos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_id": "={{ $json.order_id }}",
+            "cliente": "={{ $('Entrada Mensaje').item.json.message.chat.first_name }}",
+            "chat_id": "={{ $('Entrada Mensaje').item.json.message.chat.id }}",
+            "producto_id": "={{ $json.producto_id }}",
+            "descripcion_producto": "\"\"",
+            "cantidad": "={{ $json.cantidad }}",
+            "estado": "RECIBIDO",
+            "stock": "\"\"",
+            "fecha_pedido": "={{ DateTime.fromSeconds(      Number($node[\"Entrada Mensaje\"].json[\"message\"][\"date\"]),      { zone: 'utc' }    ).setZone('America/Bogota').toFormat('yyyy-MM-dd ') }}",
+            "fecha_despacho": "\"\"",
+            "total": "\"\""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "producto_id",
+              "displayName": "producto_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "descripcion_producto",
+              "displayName": "descripcion_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stock",
+              "displayName": "stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_pedido",
+              "displayName": "fecha_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_despacho",
+              "displayName": "fecha_despacho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        -192
+      ],
+      "id": "3723d6d3-9117-4bfb-bdbc-70c89c8d8689",
+      "name": "Pedido recibido",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 960161832,
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=960161832"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "producto_id",
+              "lookupValue": "={{ $json.producto_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1184,
+        -192
+      ],
+      "id": "045de185-ef03-4883-b590-b826c9e71c01",
+      "name": "validar producto_id",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const stockRow = $input.first().json;\nconst pedido = $('Variables utiles a JSON').first().json;\nconst telegram = $('Entrada Mensaje').first().json;\n\nconst cantidad = Number(pedido.cantidad || 0);\nconst stock = Number(stockRow.stock_anual || stockRow.stock || 0);\nconst precio_unitario = Number(stockRow.precio_unitario || 0);\nconst total = cantidad * precio_unitario;\n\nreturn [\n  {\n    json: {\n      order_id: pedido.order_id,\n      producto_id: pedido.producto_id,\n      cantidad,\n      cliente: telegram.message.from.first_name,\n      chat_id: telegram.message.chat.id,\n      descripcion_producto: stockRow.descripcion_producto,\n      stock,\n      precio_unitario,\n      total,\n      fecha_pedido: new Date(telegram.message.date * 1000).toLocaleString('sv-SE', {\n        timeZone: 'America/Bogota'\n      }).replace(' ', ' '),\n      fecha_despacho: new Date().toLocaleString('sv-SE', {\n        timeZone: 'America/Bogota'\n      }).replace(' ', ' ')\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -192
+      ],
+      "id": "512fa869-7be8-432c-a9e7-9bdbe8a01d29",
+      "name": "Variables utiles a JSON 2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Pedidos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "descripcion_producto": "={{ $json.descripcion_producto }}",
+            "stock": "={{ $json.stock }}",
+            "estado": "DESPACHADO",
+            "fecha_despacho": "={{ $json.fecha_despacho }}",
+            "total": "={{ $json.total }}",
+            "order_id": "={{ $json.order_id }}",
+            "cliente": "={{ $json.cliente }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "producto_id": "={{ $json.producto_id }}",
+            "cantidad": "={{ $json.cantidad }}",
+            "fecha_pedido": "={{ $json.fecha_pedido }}"
+          },
+          "matchingColumns": [
+            "order_id"
+          ],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "producto_id",
+              "displayName": "producto_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "descripcion_producto",
+              "displayName": "descripcion_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stock",
+              "displayName": "stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_pedido",
+              "displayName": "fecha_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_despacho",
+              "displayName": "fecha_despacho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1840,
+        -336
+      ],
+      "id": "0fc14c36-e7fe-4334-98ca-02576633d086",
+      "name": "Actualizar pedido a DESPACHADO",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 397846966,
+          "mode": "list",
+          "cachedResultName": "Facturas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=397846966"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "factura_id": "=FAC-{{ $json.order_id }}",
+            "order_id": "={{ $json.order_id }}",
+            "cliente": "={{ $json.cliente }}",
+            "monto_total": "={{ $json.total }}",
+            "fecha_factura": "={{ $json.fecha_despacho }}",
+            "estado_factura": "GENERADA"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "factura_id",
+              "displayName": "factura_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "monto_total",
+              "displayName": "monto_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_factura",
+              "displayName": "fecha_factura",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado_factura",
+              "displayName": "estado_factura",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2048,
+        -336
+      ],
+      "id": "4706fef7-5fd4-4217-a0f0-a3447c428c2c",
+      "name": "Generar registro de factura",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Pedidos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "descripcion_producto": "={{ $json.descripcion_producto }}",
+            "estado": "SIN_STOCK",
+            "stock": "={{ $json.stock }}",
+            "total": "=0 {{ $json.total }}",
+            "producto_id": "={{ $json.producto_id }}",
+            "order_id": "={{ $json.order_id }}",
+            "cliente": "={{ $json.cliente }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "cantidad": "={{ $json.cantidad }}",
+            "fecha_pedido": "={{ $json.fecha_pedido }}",
+            "fecha_despacho": "={{ $json.fecha_despacho }}"
+          },
+          "matchingColumns": [
+            "order_id"
+          ],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "producto_id",
+              "displayName": "producto_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "descripcion_producto",
+              "displayName": "descripcion_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cantidad",
+              "displayName": "cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stock",
+              "displayName": "stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_pedido",
+              "displayName": "fecha_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_despacho",
+              "displayName": "fecha_despacho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1840,
+        -96
+      ],
+      "id": "647bf904-6570-45cf-85e5-5c5370cae969",
+      "name": "Actualizar pedido a SIN_STOCK",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM",
+          "mode": "list",
+          "cachedResultName": "Registros",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Pedidos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JwWSbPDdwL7Outq6HPpJYh0pklSSGGIDWr9yiD3qHaM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "chat_id",
+              "lookupValue": "={{ $('Entrada Mensaje').item.json.message.chat.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1088,
+        16
+      ],
+      "id": "124bb592-9fd5-4ac6-86ab-ccaaa1e6c010",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqfWzfcnYpFO9p8h",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst chatId = $('Entrada Mensaje').first().json.message.chat.id;\n\nconst pedidosValidos = rows\n  .map(item => item.json)\n  .filter(pedido => pedido.estado !== 'SIN_STOCK');\n\nif (!pedidosValidos.length) {\n  return [\n    {\n      json: {\n        chat_id: chatId,\n        mensaje: 'No encontré pedidos válidos para consultar el estado. Los pedidos con estado SIN_STOCK no se tienen en cuenta.'\n      }\n    }\n  ];\n}\n\nconst ultimo = pedidosValidos[pedidosValidos.length - 1];\n\nconst mensaje = `Pedido ${ultimo.order_id}\nProducto: ${ultimo.descripcion_producto || ultimo.producto_id}\nCantidad: ${ultimo.cantidad}\nEstado: ${ultimo.estado}\nTotal: ${ultimo.total || 0}\nFecha pedido: ${ultimo.fecha_pedido || 'No registrada'}\nFecha despacho: ${ultimo.fecha_despacho || 'Pendiente'}`;\n\nreturn [\n  {\n    json: {\n      chat_id: ultimo.chat_id || chatId,\n      mensaje\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        16
+      ],
+      "id": "f0d25cc5-4ed3-4cae-a927-a6273ee18e00",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Validar Stock').item.json.chat_id }}",
+        "text": "=Tu pedido {{ $('Variables utiles a JSON 2').item.json.order_id }} no pudo procesarse.\nProducto: {{ $json.descripcion_producto }}\nCantidad solicitada: {{ $('Variables utiles a JSON 2').item.json.cantidad }}\nStock disponible: {{ $json.stock }}\nEstado: SIN STOCK",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2048,
+        -96
+      ],
+      "id": "f66f84cf-cf41-45d5-9c73-1cae8ce0bad1",
+      "name": "Notificación: Sin Stock",
+      "webhookId": "164b1f32-c4b8-43d9-9f8f-03e8aca48270",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Validar Stock').item.json.chat_id }}",
+        "text": "=Tu pedido {{$json.order_id}} fue procesado correctamente. Producto: {{ $('Actualizar pedido a DESPACHADO').item.json.descripcion_producto }} Cantidad: {{ $('Actualizar pedido a DESPACHADO').item.json.cantidad }} Total: {{ $('Actualizar pedido a DESPACHADO').item.json.total }} Estado: DESPACHADO",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2272,
+        -336
+      ],
+      "id": "726781db-3d57-42d5-94aa-1d503d3a1346",
+      "name": "Notificación: Pedido despachado",
+      "webhookId": "164b1f32-c4b8-43d9-9f8f-03e8aca48270",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Entrada Mensaje').item.json.message.chat.id }}",
+        "text": "={{ $json.mensaje }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1520,
+        16
+      ],
+      "id": "cc785ca4-018c-4049-a0d6-f9fee618a9cf",
+      "name": "Notificación: Consultar estado",
+      "webhookId": "164b1f32-c4b8-43d9-9f8f-03e8aca48270",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Entrada Mensaje').item.json.message.chat.id }}",
+        "text": "=Hola, soy tu asistente de logística, de la empresa +Logistica.\nPuedo ayudarte a crear pedidos y consultar el estado de tus pedidos.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1088,
+        224
+      ],
+      "id": "2c90bdbe-8169-4660-888c-8007590a4118",
+      "name": "Enviar saludo",
+      "webhookId": "164b1f32-c4b8-43d9-9f8f-03e8aca48270",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Entrada Mensaje').item.json.message.chat.id }}",
+        "text": "=No entendí tu solicitud.\nPuedes escribir algo como:\n- quiero pedir PROD-002 cantidad 2\n- consultar estado de mi pedido",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1088,
+        416
+      ],
+      "id": "25e92ed2-5cff-4ce9-a7bd-9474b1f64a03",
+      "name": "Explicar Motivo del Bot",
+      "webhookId": "164b1f32-c4b8-43d9-9f8f-03e8aca48270",
+      "credentials": {
+        "telegramApi": {
+          "id": "DwIR3O25lk2ckEaq",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Logístico",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Logístico",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Logístico",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Agente Logístico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Logístico": {
+      "main": [
+        [
+          {
+            "node": "Variables utiles a JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Variables utiles a JSON": {
+      "main": [
+        [
+          {
+            "node": "Decisión basada en la intención",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decisión basada en la intención": {
+      "main": [
+        [
+          {
+            "node": "Pedido recibido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar saludo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Explicar Motivo del Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Stock": {
+      "main": [
+        [
+          {
+            "node": "Actualizar pedido a DESPACHADO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Actualizar pedido a SIN_STOCK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido recibido": {
+      "main": [
+        [
+          {
+            "node": "validar producto_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validar producto_id": {
+      "main": [
+        [
+          {
+            "node": "Variables utiles a JSON 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Variables utiles a JSON 2": {
+      "main": [
+        [
+          {
+            "node": "Validar Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar pedido a DESPACHADO": {
+      "main": [
+        [
+          {
+            "node": "Generar registro de factura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar registro de factura": {
+      "main": [
+        [
+          {
+            "node": "Notificación: Pedido despachado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar pedido a SIN_STOCK": {
+      "main": [
+        [
+          {
+            "node": "Notificación: Sin Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Notificación: Consultar estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b8c131ae-ec71-45c6-93ce-97e45b567027",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9ca2256fa6c5952f140b15d5825c8bb6956344e13629bb2807e4a6efb8f55f09"
+  },
+  "id": "Uaii5t5V8QRDywna",
+  "tags": []
+}
