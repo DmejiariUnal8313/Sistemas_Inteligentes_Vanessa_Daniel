@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "modelName": "models/gemini-2.5-flash-lite",
+        "modelName": "models/gemini-2.5-flash",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
@@ -1327,7 +1327,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "b8c131ae-ec71-45c6-93ce-97e45b567027",
+  "versionId": "cef49c92-f2cf-4627-8c74-ad78e3618da1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9ca2256fa6c5952f140b15d5825c8bb6956344e13629bb2807e4a6efb8f55f09"
